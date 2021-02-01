@@ -14,13 +14,27 @@ namespace NitroxClient.Persistence
 
         private const string FILE_NAME = ".\\client.json";
 
-        private static readonly byte[] key = { 0xBF, 0xB9, 0x4B, 0x03, 0xD7, 0x3C, 0x68, 0xB8, 0x7B, 0x09, 0x63, 0x97, 0xF2, 0x18, 0xF0, 0x1B };
-        private static readonly byte[] iv = { 0x3D, 0xCE, 0x16, 0x24, 0x4E, 0x1A, 0xE2, 0x1F, 0x2F, 0x35, 0x4E, 0xF7, 0x67, 0x63, 0x42, 0xCB };
+        private static byte[] key = new Byte[16];
+        private static byte[] iv = new Byte[16];
+        private static bool needsKey = true;
+
+        private static void CheckKeySingleton()
+        {
+            if (needsKey == true)
+            {
+                string userId = PlatformUtils.main.GetCurrentUserId();
+                Random prng = new Random((int)Convert.ToInt64(userId)); //Only tested on Steam.
+                prng.NextBytes(key);
+                prng.NextBytes(iv);
+                needsKey = false;
+            }
+        }
 
         private static void Persist()
         {
             string output = JsonMapper.ToJson(model);
 #if RELEASE
+            CheckKeySingleton();
             // Create an AesManaged object
             // with the specified key and IV.
             using (AesManaged aesAlg = new AesManaged())
@@ -51,6 +65,7 @@ namespace NitroxClient.Persistence
         private static string DecryptJSON(string json)
         {
 #if RELEASE
+            CheckKeySingleton();
             // Create an AesManaged object
             // with the specified key and IV.
             using (AesManaged aesAlg = new AesManaged())
